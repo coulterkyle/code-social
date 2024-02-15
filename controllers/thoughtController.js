@@ -20,9 +20,9 @@ module.exports = {
 
       if (!thought) {
         return res.status(404).json({ message: 'No thought with that ID' })
-      }
-
+      } else {
       res.json(thought);
+      }
     } catch (err) {
       console.log(err);
       return res.status(500).json(err);
@@ -32,6 +32,12 @@ module.exports = {
   async createThought(req, res) {
     try {
       const thought = await Thought.create(req.body);
+
+      const giveThought = await User.findOneAndUpdate(
+        { username: req.body.username },
+        { $addToSet: { thoughts: thought._id } },
+        { runValidators: true, new: true }
+      )
       res.json(thought);
     } catch (err) {
       res.status(500).json(err);
@@ -39,13 +45,13 @@ module.exports = {
   },
 
   // Update a thought
-  async updateThought (req, res) {
+  async updateThought(req, res) {
     try {
       const thought = await Thought.findOneAndUpdate(
-          { _id: req.params.thoughtId },
-          { thoughtText: req.body.thoughtText },
-          { runValidators: true, new: true }
-          );
+        { _id: req.params.thoughtId },
+        { $set: req.body },
+        { runValidators: true, new: true }
+      );
       res.status(200).json(thought);
       console.log(`Updated: ${thought}`);
     } catch (err) {
@@ -60,14 +66,15 @@ module.exports = {
       const thought = await Thought.findOneAndDelete({ _id: req.params.thoughtId });
 
       if (!thought) {
-        res.status(404).json({ message: 'No user with that ID' });
+        res.status(404).json({ message: 'No thought with that ID' });
+      } else {
+        await Thought.deleteMany({ _id: { $in: thought.reactions } });
+        res.json({ message: 'Thought and Reactions deleted!' });
       }
-
-      await Thought.deleteMany({ _id: { $in: thoughts.reactions } });
-      res.json({ message: 'Thought and Reactions deleted!' });
     } catch (err) {
       res.status(500).json(err);
     }
+
   },
 
   // Add a reaction to a thought
@@ -75,7 +82,7 @@ module.exports = {
     try {
       const reaction = await Thought.findOneAndUpdate(
         { _id: req.params.thoughtId },
-        { $addToSet: { reaction: req.body } },
+        { $addToSet: { reactions: req.body } },
         { runValidators: true, new: true }
       );
 
@@ -83,10 +90,11 @@ module.exports = {
         return res
           .status(404)
           .json({ message: 'No reaction found with that ID' });
-      }
-
+      } else {
       res.json(reaction);
+      }
     } catch (err) {
+      console.log(err)
       res.status(500).json(err);
     }
   },
@@ -105,8 +113,9 @@ module.exports = {
           .json({ message: 'No reaction found with that ID' });
       }
 
-      res.json(friend);
+      res.json(thought);
     } catch (err) {
+      console.log(err)
       res.status(500).json(err);
     }
   },
